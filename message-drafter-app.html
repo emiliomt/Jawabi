@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Message Drafter - Multi-LLM Support</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .api-key-section {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .api-key-section h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .provider-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .provider-btn {
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            color: #333;
+        }
+
+        .provider-btn:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .provider-btn.active {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+        }
+
+        .api-input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .api-input-group input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+
+        .api-input-group button {
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .api-input-group button:hover {
+            background: #5568d3;
+        }
+
+        .api-status {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .api-status.success {
+            color: #10b981;
+        }
+
+        .provider-info {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f8f9ff;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .provider-info a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .provider-info a:hover {
+            text-decoration: underline;
+        }
+
+        .input-section {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 20px;
+        }
+
+        .upload-area:hover {
+            background: #f8f9ff;
+            border-color: #5568d3;
+        }
+
+        .upload-area.dragover {
+            background: #f0f3ff;
+            border-color: #4f5bd5;
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+
+        .preview-image {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-family: inherit;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .generate-btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .generate-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .generate-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            background: white;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results-section {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .context-summary {
+            background: #f8f9ff;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+
+        .context-summary h3 {
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .vibe-check {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #667eea;
+            color: white;
+            border-radius: 20px;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+
+        .drafts-container {
+            display: grid;
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .draft-card {
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.3s;
+        }
+
+        .draft-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+        }
+
+        .draft-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .draft-label {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: #333;
+        }
+
+        .draft-label.safe {
+            color: #10b981;
+        }
+
+        .draft-label.bold {
+            color: #f59e0b;
+        }
+
+        .draft-label.short {
+            color: #3b82f6;
+        }
+
+        .copy-btn {
+            padding: 8px 16px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .copy-btn:hover {
+            background: #5568d3;
+        }
+
+        .copy-btn.copied {
+            background: #10b981;
+        }
+
+        .draft-text {
+            background: #f9fafb;
+            padding: 15px;
+            border-radius: 8px;
+            line-height: 1.6;
+            margin-bottom: 15px;
+            white-space: pre-wrap;
+        }
+
+        .draft-critique {
+            font-size: 0.9rem;
+            color: #6b7280;
+            font-style: italic;
+            padding-left: 15px;
+            border-left: 3px solid #e5e7eb;
+        }
+
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8rem;
+            }
+
+            .input-section,
+            .results-section {
+                padding: 20px;
+            }
+
+            .provider-selector {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💬 Message Drafter</h1>
+            <p>Multi-LLM Communication Assistant</p>
+        </div>
+
+        <div class="api-key-section">
+            <h3>🔑 API Configuration</h3>
+            
+            <div class="provider-selector">
+                <button class="provider-btn active" onclick="selectProvider('anthropic')">Anthropic</button>
+                <button class="provider-btn" onclick="selectProvider('openai')">OpenAI</button>
+                <button class="provider-btn" onclick="selectProvider('google')">Google AI</button>
+                <button class="provider-btn" onclick="selectProvider('groq')">Groq</button>
+                <button class="provider-btn" onclick="selectProvider('custom')">Custom</button>
+            </div>
+
+            <div class="api-input-group">
+                <input type="password" id="apiKeyInput" placeholder="Enter your API key...">
+                <button onclick="saveApiKey()">Save Key</button>
+            </div>
+
+            <div id="customEndpoint" style="display: none; margin-top: 10px;">
+                <input type="text" id="customEndpointInput" placeholder="Custom API Endpoint URL" style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px;">
+            </div>
+
+            <div class="api-status" id="apiStatus">No API key saved</div>
+            
+            <div class="provider-info" id="providerInfo">
+                Get your API key from <a href="https://console.anthropic.com/" target="_blank">console.anthropic.com</a>
+            </div>
+        </div>
+
+        <div class="input-section">
+            <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+                <div class="upload-icon">📸</div>
+                <h3>Click or drag to upload screenshot</h3>
+                <p>Upload a screenshot of your conversation</p>
+                <input type="file" id="fileInput" accept="image/*" style="display: none;" onchange="handleFileSelect(event)">
+                <img id="previewImage" class="preview-image" style="display: none;">
+            </div>
+
+            <div class="form-group">
+                <label for="situation">Situation:</label>
+                <textarea id="situation" placeholder="e.g., Following up on a job interview, replying to a flirty text, responding to a difficult client..."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="contact">Means of Contact:</label>
+                <input type="text" id="contact" placeholder="e.g., Email, Text Message, LinkedIn DM, Slack...">
+            </div>
+
+            <div class="form-group">
+                <label for="tone">Desired Tone (optional):</label>
+                <input type="text" id="tone" placeholder="e.g., Professional, Flirty, Firm, Apologetic, Casual... (leave blank to auto-detect)">
+            </div>
+
+            <button class="generate-btn" id="generateBtn" onclick="generateDrafts()">Generate Message Drafts</button>
+        </div>
+
+        <div id="loadingSection" class="loading" style="display: none;">
+            <div class="spinner"></div>
+            <h3>Analyzing your message...</h3>
+            <p>AI is crafting the perfect responses for you</p>
+        </div>
+
+        <div id="errorSection" style="display: none;"></div>
+
+        <div id="resultsSection" class="results-section" style="display: none;">
+            <!-- Results will be populated here -->
+        </div>
+    </div>
+
+    <script>
+        let uploadedImage = null;
+        let currentProvider = localStorage.getItem('llm_provider') || 'anthropic';
+        let apiKey = localStorage.getItem(`${currentProvider}_api_key`);
+        let customEndpoint = localStorage.getItem('custom_endpoint') || '';
+
+        const providerConfig = {
+            anthropic: {
+                name: 'Anthropic Claude',
+                infoText: 'Get your API key from <a href="https://console.anthropic.com/" target="_blank">console.anthropic.com</a>',
+                endpoint: 'https://api.anthropic.com/v1/messages',
+                supportsVision: true
+            },
+            openai: {
+                name: 'OpenAI',
+                infoText: 'Get your API key from <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com</a>',
+                endpoint: 'https://api.openai.com/v1/chat/completions',
+                supportsVision: true
+            },
+            google: {
+                name: 'Google AI',
+                infoText: 'Get your API key from <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com</a>',
+                endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent',
+                supportsVision: true
+            },
+            groq: {
+                name: 'Groq',
+                infoText: 'Get your API key from <a href="https://console.groq.com/keys" target="_blank">console.groq.com</a>. Note: Groq models currently have limited vision support.',
+                endpoint: 'https://api.groq.com/openai/v1/chat/completions',
+                supportsVision: true
+            },
+            custom: {
+                name: 'Custom',
+                infoText: 'Enter your custom API endpoint and key. Must support OpenAI-compatible format.',
+                endpoint: '',
+                supportsVision: true
+            }
+        };
+
+        // Initialize
+        selectProvider(currentProvider, false);
+        if (apiKey) {
+            document.getElementById('apiKeyInput').value = apiKey;
+            document.getElementById('apiStatus').textContent = `✓ ${providerConfig[currentProvider].name} API key saved`;
+            document.getElementById('apiStatus').classList.add('success');
+        }
+
+        function selectProvider(provider, clearKey = true) {
+            currentProvider = provider;
+            localStorage.setItem('llm_provider', provider);
+
+            // Update button states
+            document.querySelectorAll('.provider-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event?.target?.classList.add('active') || document.querySelector(`.provider-btn:nth-child(${Object.keys(providerConfig).indexOf(provider) + 1})`).classList.add('active');
+
+            // Update info text
+            document.getElementById('providerInfo').innerHTML = providerConfig[provider].infoText;
+
+            // Show/hide custom endpoint field
+            document.getElementById('customEndpoint').style.display = provider === 'custom' ? 'block' : 'none';
+            if (provider === 'custom' && customEndpoint) {
+                document.getElementById('customEndpointInput').value = customEndpoint;
+            }
+
+            // Load saved key for this provider
+            if (clearKey) {
+                apiKey = localStorage.getItem(`${provider}_api_key`) || '';
+                document.getElementById('apiKeyInput').value = apiKey;
+                document.getElementById('apiStatus').textContent = apiKey 
+                    ? `✓ ${providerConfig[provider].name} API key saved`
+                    : 'No API key saved';
+                document.getElementById('apiStatus').classList.toggle('success', !!apiKey);
+            }
+        }
+
+        function saveApiKey() {
+            const key = document.getElementById('apiKeyInput').value.trim();
+            if (key) {
+                localStorage.setItem(`${currentProvider}_api_key`, key);
+                apiKey = key;
+                
+                if (currentProvider === 'custom') {
+                    customEndpoint = document.getElementById('customEndpointInput').value.trim();
+                    localStorage.setItem('custom_endpoint', customEndpoint);
+                }
+
+                document.getElementById('apiStatus').textContent = `✓ ${providerConfig[currentProvider].name} API key saved successfully`;
+                document.getElementById('apiStatus').classList.add('success');
+            } else {
+                document.getElementById('apiStatus').textContent = 'Please enter a valid API key';
+                document.getElementById('apiStatus').classList.remove('success');
+            }
+        }
+
+        // Drag and drop handlers
+        const uploadArea = document.getElementById('uploadArea');
+        
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                processImage(file);
+            }
+        });
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                processImage(file);
+            }
+        }
+
+        function processImage(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                uploadedImage = e.target.result;
+                const preview = document.getElementById('previewImage');
+                preview.src = uploadedImage;
+                preview.style.display = 'block';
+                document.querySelector('.upload-icon').style.display = 'none';
+                document.querySelector('.upload-area h3').textContent = 'Image uploaded successfully!';
+                document.querySelector('.upload-area p').textContent = 'Click to change';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function generateDrafts() {
+            // Validation
+            if (!apiKey) {
+                showError(`Please enter and save your ${providerConfig[currentProvider].name} API key first.`);
+                return;
+            }
+
+            if (currentProvider === 'custom' && !customEndpoint) {
+                showError('Please enter a custom API endpoint.');
+                return;
+            }
+
+            if (!uploadedImage) {
+                showError('Please upload a screenshot first.');
+                return;
+            }
+
+            const situation = document.getElementById('situation').value.trim();
+            const contact = document.getElementById('contact').value.trim();
+            const tone = document.getElementById('tone').value.trim();
+
+            if (!situation || !contact) {
+                showError('Please fill in Situation and Means of Contact.');
+                return;
+            }
+
+            // Show loading
+            document.getElementById('loadingSection').style.display = 'block';
+            document.getElementById('resultsSection').style.display = 'none';
+            document.getElementById('errorSection').style.display = 'none';
+            document.getElementById('generateBtn').disabled = true;
+
+            try {
+                const base64Data = uploadedImage.split(',')[1];
+                const mimeType = uploadedImage.split(',')[0].match(/:(.*?);/)[1];
+
+                const prompt = `You are an expert Communication Strategist and Social Dynamics Analyst acting as a Message Drafter.
+
+UPLOADED IMAGE CONTEXT:
+- Situation: ${situation}
+- Means of Contact: ${contact}
+${tone ? `- Desired Tone: ${tone}` : '- Desired Tone: (Please infer from context)'}
+
+Please analyze the image I've provided and generate a response in the following JSON format ONLY (no other text):
+
+{
+  "contextSummary": "One sentence summary of the situation",
+  "vibeCheck": "The recommended energy/tone (e.g., Professional, Flirty, Firm, Apologetic, Casual, etc.)",
+  "drafts": [
+    {
+      "label": "Safe",
+      "text": "The safe, low-risk message that matches the request perfectly",
+      "critique": "Brief psychological explanation of why this works"
+    },
+    {
+      "label": "Bold",
+      "text": "A slightly more assertive, witty, or direct version",
+      "critique": "Brief psychological explanation of why this works"
+    },
+    {
+      "label": "Short",
+      "text": "Concise and to-the-point version",
+      "critique": "Brief psychological explanation of why this works"
+    }
+  ]
+}
+
+Focus on the most recent message in the screenshot to determine the necessary reply. Return ONLY valid JSON, no markdown formatting or additional text.`;
+
+                let response;
+                
+                if (currentProvider === 'anthropic') {
+                    response = await callAnthropicAPI(prompt, base64Data, mimeType);
+                } else if (currentProvider === 'openai') {
+                    response = await callOpenAIAPI(prompt, base64Data, mimeType);
+                } else if (currentProvider === 'google') {
+                    response = await callGoogleAPI(prompt, base64Data, mimeType);
+                } else if (currentProvider === 'groq') {
+                    response = await callGroqAPI(prompt, base64Data, mimeType);
+                } else if (currentProvider === 'custom') {
+                    response = await callCustomAPI(prompt, base64Data, mimeType);
+                }
+
+                displayResults(response);
+
+            } catch (error) {
+                console.error('Error:', error);
+                showError(`Error: ${error.message}`);
+            } finally {
+                document.getElementById('loadingSection').style.display = 'none';
+                document.getElementById('generateBtn').disabled = false;
+            }
+        }
+
+        async function callAnthropicAPI(prompt, base64Data, mimeType) {
+            const response = await fetch(providerConfig.anthropic.endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': apiKey,
+                    'anthropic-version': '2023-06-01'
+                },
+                body: JSON.stringify({
+                    model: 'claude-sonnet-4-20250514',
+                    max_tokens: 2000,
+                    messages: [{
+                        role: 'user',
+                        content: [
+                            {
+                                type: 'image',
+                                source: {
+                                    type: 'base64',
+                                    media_type: mimeType,
+                                    data: base64Data
+                                }
+                            },
+                            {
+                                type: 'text',
+                                text: prompt
+                            }
+                        ]
+                    }]
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error?.message || 'API request failed');
+            }
+
+            const data = await response.json();
+            const textContent = data.content.find(c => c.type === 'text')?.text || '';
+            return parseJSONResponse(textContent);
+        }
+
+        async function callOpenAIAPI(prompt, base64Data, mimeType) {
+            const response = await fetch(providerConfig.openai.endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: 'gpt-4o',
+                    max_tokens: 2000,
+                    messages: [{
+                        role: 'user',
+                        content: [
+                            {
+                                type: 'image_url',
+                                image_url: {
+                                    url: `data:${mimeType};base64,${base64Data}`
+                                }
+                            },
+                            {
+                                type: 'text',
+                                text: prompt
+                            }
+                        ]
+                    }]
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error?.message || 'API request failed');
+            }
+
+            const data = await response.json();
+            const textContent = data.choices[0]?.message?.content || '';
+            return parseJSONResponse(textContent);
+        }
+
+        async function callGoogleAPI(prompt, base64Data, mimeType) {
+            const response = await fetch(`${providerConfig.google.endpoint}?key=${apiKey}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [
+                            {
+                                inline_data: {
+                                    mime_type: mimeType,
+                                    data: base64Data
+                                }
+                            },
+                            {
+                                text: prompt
+                            }
+                        ]
+                    }]
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error?.message || 'API request failed');
+            }
+
+            const data = await response.json();
+            const textContent = data.candidates[0]?.content?.parts[0]?.text || '';
+            return parseJSONResponse(textContent);
+        }
+
+        async function callGroqAPI(prompt, base64Data, mimeType) {
+            const response = await fetch(providerConfig.groq.endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: 'llama-3.2-90b-vision-preview',
+                    max_tokens: 2000,
+                    messages: [{
+                        role: 'user',
+                        content: [
+                            {
+                                type: 'image_url',
+                                image_url: {
+                                    url: `data:${mimeType};base64,${base64Data}`
+                                }
+                            },
+                            {
+                                type: 'text',
+                                text: prompt
+                            }
+                        ]
+                    }]
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error?.message || 'API request failed');
+            }
+
+            const data = await response.json();
+            const textContent = data.choices[0]?.message?.content || '';
+            return parseJSONResponse(textContent);
+        }
+
+        async function callCustomAPI(prompt, base64Data, mimeType) {
+            const response = await fetch(customEndpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: 'default',
+                    max_tokens: 2000,
+                    messages: [{
+                        role: 'user',
+                        content: [
+                            {
+                                type: 'image_url',
+                                image_url: {
+                                    url: `data:${mimeType};base64,${base64Data}`
+                                }
+                            },
+                            {
+                                type: 'text',
+                                text: prompt
+                            }
+                        ]
+                    }]
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error?.message || 'API request failed');
+            }
+
+            const data = await response.json();
+            const textContent = data.choices?.[0]?.message?.content || data.content?.[0]?.text || '';
+            return parseJSONResponse(textContent);
+        }
+
+        function parseJSONResponse(text) {
+            const jsonMatch = text.match(/\{[\s\S]*\}/);
+            if (!jsonMatch) {
+                throw new Error('Could not parse response from AI');
+            }
+            return JSON.parse(jsonMatch[0]);
+        }
+
+        function displayResults(data) {
+            const resultsSection = document.getElementById('resultsSection');
+            
+            const html = `
+                <div class="context-summary">
+                    <h3>📋 Context Summary</h3>
+                    <p>${data.contextSummary}</p>
+                    <div class="vibe-check">✨ Vibe Check: ${data.vibeCheck}</div>
+                </div>
+
+                <div class="drafts-container">
+                    ${data.drafts.map((draft, index) => `
+                        <div class="draft-card">
+                            <div class="draft-header">
+                                <span class="draft-label ${draft.label.toLowerCase()}">${draft.label === 'Safe' ? '🛡️' : draft.label === 'Bold' ? '🔥' : '⚡'} ${draft.label} Option</span>
+                                <button class="copy-btn" onclick="copyToClipboard(${index}, \`${draft.text.replace(/`/g, '\\`').replace(/\$/g, '\\$')}\`)">
+                                    Copy
+                                </button>
+                            </div>
+                            <div class="draft-text">${draft.text}</div>
+                            <div class="draft-critique">💡 ${draft.critique}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
